@@ -15,45 +15,62 @@ namespace ConsoleApp3
     {
         static void Main(string[] args)
         {
+            string param = args.Length > 0 ? args[0] : "'Hey' Name, 1 IsAdmin --";
+
             using (var context = new TestContext())
             {
-                //string name = "Name";
-                string name = "; DROP TABLE Users; --";
-
-                WriteLine("This is parameterized, due to the FomattableString overload:");
-                WriteLine();
-                WriteLine(context.Things.FromSql($"Select 1 as ThingId, {name} as Name").ToSql());
+                WriteColor("This is parameterized, due to the FomattableString overload:");
+                WriteLine(context.Users.FromSql($"Select 1 UserId, {param} Name, 0 IsAdmin").ToSql());
                 WriteLine();
                 WriteLine();
 
-                WriteLine("This is not parameterized, due to the var being string and using another overload:");
-                WriteLine();
-                var sql = $"Select 1 as ThingId, {name} as Name";
-                WriteLine(context.Things.FromSql(sql).ToSql());
+                WriteColor("This is not parameterized, due to the var being string and using another overload:");
+                var sql = $"Select 1 UserId, {param} Name, 0 IsAdmin";
+                WriteLine(context.Users.FromSql(sql).ToSql());
                 WriteLine();
                 WriteLine();
 
-                WriteLine("This is also not parameterized, due to string using another overload:");
+                WriteColor("This is also not parameterized, due to string using another overload:");
+                string sqlString = $"Select 1 UserId, {param} Name, 0 IsAdmin";
+                WriteLine(context.Users.FromSql(sqlString).ToSql());
                 WriteLine();
-                string sqlString = $"Select 1 as ThingId, {name} as Name";
-                WriteLine(context.Things.FromSql(sqlString).ToSql());
+
+                WriteColor("This would appear to work, but is another injection path:");
+                string injectionParam = "'" + param;
+                string sqlQuotedString = $"Select 1 UserId, '{injectionParam}' Name, 0 IsAdmin";
+                WriteLine(context.Users.FromSql(sqlQuotedString).ToSql());
+                WriteLine();
+
+                WriteColor("This would appear to work, but is another injection path:");
+                string injectionName2 = "'" + param;
+                string quotedName = $"'{injectionName2}'";
+                string sqlStringQuotedName = $"Select 1 UserId, {quotedName} Name, 0 IsAdmin";
+                WriteLine(context.Users.FromSql(sqlStringQuotedName).ToSql());
                 WriteLine();
             }
-            WriteLine("Press any key to exit");
-            ReadLine();
+        }
+
+        private static void WriteColor(string line)
+        {
+            var prev = ForegroundColor;
+            ForegroundColor = ConsoleColor.Green;
+            Write("--"); // For easy copy/paste to SQL
+            WriteLine(line);
+            ForegroundColor = prev;
         }
 
         public class TestContext : DbContext
         {
-            public DbSet<Thing> Things { get; set; }
+            public DbSet<User> Users { get; set; }
             protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) =>
                 optionsBuilder.UseSqlServer("Server=.;Database=tempdb;Trusted_Connection=True;");
         }
 
-        public class Thing
+        public class User
         {
-            public int ThingId { get; set; }
+            public int UserId { get; set; }
             public string Name { get; set; }
+            public bool IsAdmin { get; set;}
         }
     }
 
